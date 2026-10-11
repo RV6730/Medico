@@ -16,7 +16,8 @@ import {
   User,
   ShieldCheck,
   Lock,
-  UserCheck
+  UserCheck,
+  LogOut
 } from "lucide-react";
 import DoctorApplyModal from "./DoctorApplyModal";
 import AdminVerificationModal from "./AdminVerificationModal";
@@ -87,7 +88,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="navbar" style={{ position: "relative" }}>
+      <nav className="navbar" style={{ position: "sticky", top: 0, zIndex: 100 }}>
         <div 
           className="navbar-inner" 
           style={{ 
@@ -102,10 +103,14 @@ export default function Navbar() {
           <button
             type="button"
             className="icon-btn"
-            onClick={() => setMenuOpen(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMenuOpen(true);
+            }}
             aria-label="Open Navigation Menu"
             title="Open Menu"
-            style={{ width: "38px", height: "38px", justifySelf: "start" }}
+            style={{ width: "38px", height: "38px", justifySelf: "start", cursor: "pointer", zIndex: 10 }}
           >
             <Menu size={22} color="var(--text-primary)" />
           </button>
@@ -165,9 +170,10 @@ export default function Navbar() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.4)",
+            background: "rgba(15, 23, 42, 0.45)",
             backdropFilter: "blur(4px)",
-            zIndex: 1000,
+            WebkitBackdropFilter: "blur(4px)",
+            zIndex: 99999,
             display: "flex",
             justifyContent: "flex-start",
             animation: "fadeIn 0.2s ease"

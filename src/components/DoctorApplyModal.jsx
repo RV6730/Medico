@@ -16,7 +16,7 @@ import { SPECIALTIES } from "../data/mockData";
 export default function DoctorApplyModal({ isOpen, onClose }) {
   const { user, submitDoctorApplication, doctorApplications } = useApp();
 
-  const userExistingApp = doctorApplications?.find(a => a.userId === user.id);
+  const userExistingApp = doctorApplications?.find(a => a.userId === user?.id);
 
   const [formData, setFormData] = useState({
     fullName: user?.name ? (user.name.startsWith("Dr.") ? user.name : `Dr. ${user.name}`) : "",
@@ -43,10 +43,10 @@ export default function DoctorApplyModal({ isOpen, onClose }) {
     }
 
     submitDoctorApplication({
-      userId: user.id,
+      userId: user?.id || "user-id",
       applicantName: formData.fullName,
-      email: user.email,
-      phone: user.phone,
+      email: user?.email || "",
+      phone: user?.phone || "",
       registrationNumber: formData.registrationNumber,
       medicalCouncil: formData.medicalCouncil,
       qualifications: formData.qualifications,
