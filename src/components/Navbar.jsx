@@ -24,7 +24,7 @@ import AdminVerificationModal from "./AdminVerificationModal";
 import SessionInfoModal from "./SessionInfoModal";
 
 export default function Navbar() {
-  const { role, setRole, user, logout, setEmergencyActive, doctorApplications, sessionMeta } = useApp();
+  const { role, setRole, user, logout, setEmergencyActive, doctorApplications, sessionMeta, isAdmin } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -398,7 +398,7 @@ export default function Navbar() {
                 </button>
               )}
 
-              {/* Admin Review Portal Trigger */}
+              {/* Admin Review Portal Trigger (Restricted to Authorized Admins) */}
               <button
                 type="button"
                 onClick={() => {
@@ -412,30 +412,38 @@ export default function Navbar() {
                   justifyContent: "space-between",
                   padding: "11px 12px",
                   borderRadius: "10px",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
+                  background: isAdmin ? "rgba(5, 150, 105, 0.08)" : "transparent",
+                  border: isAdmin ? "1px solid rgba(5, 150, 105, 0.3)" : "1px solid var(--border)",
                   cursor: "pointer",
                   textAlign: "left",
                   marginBottom: "6px"
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <ShieldCheck size={18} color="var(--secondary)" />
+                  <ShieldCheck size={18} color={isAdmin ? "var(--primary)" : "var(--text-muted)"} />
                   <div>
                     <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                      Admin Board Review
+                      {isAdmin ? "Medical Board Admin (Active)" : "Medical Board Admin Portal"}
                     </div>
                     <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                      Confirm doctor applications
+                      {isAdmin ? `${pendingAppsCount} pending doctor reviews` : "Restricted: Council Auth Required"}
                     </div>
                   </div>
                 </div>
-                {pendingAppsCount > 0 ? (
-                  <span className="badge badge-warning" style={{ fontSize: "0.65rem" }}>
-                    {pendingAppsCount} Pending
-                  </span>
+                {isAdmin ? (
+                  pendingAppsCount > 0 ? (
+                    <span className="badge badge-warning" style={{ fontSize: "0.65rem" }}>
+                      {pendingAppsCount} Pending
+                    </span>
+                  ) : (
+                    <span className="badge badge-success" style={{ fontSize: "0.65rem" }}>
+                      Authorized
+                    </span>
+                  )
                 ) : (
-                  <ChevronRight size={14} color="var(--text-muted)" />
+                  <span className="badge badge-muted" style={{ fontSize: "0.65rem", display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                    <Lock size={10} /> Locked
+                  </span>
                 )}
               </button>
 

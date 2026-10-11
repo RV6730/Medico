@@ -15,7 +15,8 @@ import {
   Sparkles,
   KeyRound,
   CheckCircle2,
-  Stethoscope
+  Stethoscope,
+  AlertCircle
 } from "lucide-react";
 import { POPULAR_LOCALITIES } from "../data/mockData";
 
@@ -23,7 +24,7 @@ export default function Login() {
   const { registerPatient, handleLogin, fetchLocation, isFetchingLocation, user } = useApp();
   const navigate = useNavigate();
 
-  // Mode: "signin" | "register"
+  // Mode: "signin" | "register" | "admin"
   const [authMode, setAuthMode] = useState("signin");
 
   // Sign In Form State (Completely Blank by Default)
@@ -32,6 +33,14 @@ export default function Login() {
     password: "",
     rememberMe: false,
   });
+
+  // Admin Portal Sign-in State
+  const [adminData, setAdminData] = useState({
+    email: "",
+    passkey: "",
+    rememberMe: false,
+  });
+  const [adminError, setAdminError] = useState("");
 
   // Registration Form State (Completely Blank by Default)
   const [formData, setFormData] = useState({
@@ -106,6 +115,43 @@ export default function Login() {
     navigate("/patient/home");
   };
 
+  const handleAdminSignInSubmit = async (e) => {
+    e.preventDefault();
+    setAdminError("");
+    const key = adminData.passkey.trim();
+    const validKeys = [
+      "ADMIN-MEDICO-2026",
+      "MEDICO-ADMIN-2026",
+      "admin2026",
+      "admin123",
+      "MEDICO2026",
+      "admin@medico.health"
+    ];
+
+    if (!validKeys.includes(key)) {
+      setAdminError("Invalid Admin Passkey. Medical Council authorization denied.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    await handleLogin({
+      id: "admin_council_01",
+      name: "Medical Board Admin",
+      phone: "+91 99000 00001",
+      email: adminData.email.trim() || "admin@medico.health",
+      role: "admin",
+      isAdmin: true,
+      wallet: {
+        balance: 5000,
+        minBalance: 0,
+        transactions: [],
+      },
+    }, adminData.rememberMe);
+
+    setIsSubmitting(false);
+    navigate("/patient/home");
+  };
+
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.phone.trim()) {
@@ -164,7 +210,7 @@ export default function Login() {
           <span>Cryptographic Session Tokens • Anti-Theft Protected</span>
         </div>
 
-        {/* Auth Mode Tabs (Sign In vs Register) */}
+        {/* Auth Mode Tabs (Sign In vs Register vs Admin) */}
         <div className="role-switcher" style={{ marginTop: "16px" }}>
           <button
             type="button"
@@ -178,7 +224,14 @@ export default function Login() {
             className={`role-tab ${authMode === "register" ? "active" : ""}`}
             onClick={() => setAuthMode("register")}
           >
-            <User size={16} /> Create Patient Account
+            <User size={16} /> Patient Account
+          </button>
+          <button
+            type="button"
+            className={`role-tab ${authMode === "admin" ? "active" : ""}`}
+            onClick={() => setAuthMode("admin")}
+          >
+            <ShieldCheck size={16} /> Admin Portal
           </button>
         </div>
       </div>
@@ -271,6 +324,90 @@ export default function Login() {
                 </strong>
                 Sign in with your user account. Once inside, submit your Medical Registration Number to Admin for official Doctor Mode verification.
               </div>
+            </div>
+          </form>
+        ) : authMode === "admin" ? (
+          /* Medical Board Admin Portal Authentication Form */
+          <form onSubmit={handleAdminSignInSubmit} className="reg-form">
+            <div className="form-section-header">
+              <ShieldCheck size={16} color="var(--primary)" />
+              <span>Medical Board Admin Authorization</span>
+            </div>
+
+            <div style={{
+              background: "rgba(5, 150, 105, 0.06)",
+              border: "1px solid rgba(5, 150, 105, 0.2)",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              fontSize: "0.78rem",
+              color: "var(--text-secondary)",
+              marginBottom: "14px",
+              lineHeight: 1.4,
+            }}>
+              Restricted portal for certified Medical Council administrators to verify practitioner registrations and authorize doctors.
+            </div>
+
+            <div className="input-field">
+              <label>Admin Council Email / ID</label>
+              <div className="input-wrap">
+                <Mail size={18} className="field-icon" />
+                <input
+                  type="text"
+                  placeholder="admin@medico.health"
+                  value={adminData.email}
+                  onChange={(e) => {
+                    setAdminData({ ...adminData, email: e.target.value });
+                    setAdminError("");
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="input-field">
+              <label>Council Administrator Passkey</label>
+              <div className="input-wrap">
+                <Lock size={18} className="field-icon" />
+                <input
+                  type="password"
+                  placeholder="Enter administrator passkey"
+                  value={adminData.passkey}
+                  onChange={(e) => {
+                    setAdminData({ ...adminData, passkey: e.target.value });
+                    setAdminError("");
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            {adminError && (
+              <div style={{ fontSize: "0.75rem", color: "var(--text-danger)", marginBottom: "10px", display: "flex", alignItems: "center", gap: "4px" }}>
+                <AlertCircle size={13} />
+                <span>{adminError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primary btn-full btn-lg"
+              disabled={isSubmitting}
+            >
+              <span>Authenticate Administrator</span>
+              <ArrowRight size={18} />
+            </button>
+
+            <div style={{
+              marginTop: "16px",
+              padding: "8px 12px",
+              background: "rgba(0, 0, 0, 0.02)",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              fontSize: "0.72rem",
+              color: "var(--text-muted)",
+              textAlign: "center"
+            }}>
+              Official Council Key: <strong>ADMIN-MEDICO-2026</strong>
             </div>
           </form>
         ) : (

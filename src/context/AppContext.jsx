@@ -81,6 +81,20 @@ export function AppProvider({ children }) {
       return CURRENT_USER;
     }
   });
+  const [isAdmin, setIsAdmin] = useState(() => {
+    try {
+      const active = getActiveSession();
+      if (active?.isAdmin || active?.role === "admin") return true;
+      const savedUser = sessionStorage.getItem('medico_user') || localStorage.getItem('medico_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        return !!parsed.isAdmin || parsed.role === "admin";
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
   const [theme] = useState("light");
   const [notifications, setNotifications] = useState([]);
   const [emergencyActive, setEmergencyActive] = useState(false);
@@ -609,7 +623,61 @@ export function AppProvider({ children }) {
     return newApp;
   }, [user, pushNotification]);
 
+  const verifyAdminPasskey = useCallback((key) => {
+    const clean = (key || "").trim();
+    const validKeys = [
+      "ADMIN-MEDICO-2026",
+      "MEDICO-ADMIN-2026",
+      "admin2026",
+      "admin123",
+      "MEDICO2026",
+      "admin@medico.health"
+    ];
+    if (validKeys.includes(clean)) {
+      setIsAdmin(true);
+      setUser((prev) => {
+        const adminUser = {
+          ...prev,
+          isAdmin: true,
+          role: "admin",
+          name: prev?.name && prev.name !== "Member" ? prev.name : "Medical Board Officer"
+        };
+        try {
+          sessionStorage.setItem('medico_user', JSON.stringify(adminUser));
+          localStorage.setItem('medico_user', JSON.stringify(adminUser));
+        } catch(e) {}
+        return adminUser;
+      });
+      setSessionMeta((prev) => prev ? ({ ...prev, isAdmin: true, role: "admin" }) : null);
+      pushNotification("Admin Credentials Verified: Medical Board executive authorization granted.");
+      return { success: true };
+    } else {
+      pushNotification("Access Denied: Invalid Medical Board Admin Security Key.");
+      return { success: false, error: "Invalid Admin Passkey. Authorization failed." };
+    }
+  }, [pushNotification]);
+
+  const exitAdminMode = useCallback(() => {
+    setIsAdmin(false);
+    setUser((prev) => {
+      const regularUser = { ...prev, isAdmin: false, role: "patient" };
+      try {
+        sessionStorage.setItem('medico_user', JSON.stringify(regularUser));
+        localStorage.setItem('medico_user', JSON.stringify(regularUser));
+      } catch(e) {}
+      return regularUser;
+    });
+    setRole("patient");
+    setSessionMeta((prev) => prev ? ({ ...prev, isAdmin: false, role: "patient" }) : null);
+    pushNotification("Exited Admin Mode: Administrative authority relinquished.");
+  }, [pushNotification]);
+
   const approveDoctorApplication = useCallback((appId) => {
+    if (!isAdmin) {
+      pushNotification("Access Denied: Only certified Medical Board Administrators can approve practitioner credentials.");
+      return false;
+    }
+
     let approvedApp = null;
     setDoctorApplications((prev) => {
       const updated = prev.map((a) => {
@@ -676,9 +744,14 @@ export function AppProvider({ children }) {
         pushNotification(`Admin verified and approved ${approvedApp.applicantName} [${approvedApp.registrationNumber}].`);
       }
     }
-  }, [user, pushNotification]);
+  }, [isAdmin, user, pushNotification]);
 
   const rejectDoctorApplication = useCallback((appId, reason) => {
+    if (!isAdmin) {
+      pushNotification("Access Denied: Only certified Medical Board Administrators can reject practitioner credentials.");
+      return false;
+    }
+
     let target = null;
     setDoctorApplications((prev) => {
       const updated = prev.map((a) => {
@@ -692,7 +765,7 @@ export function AppProvider({ children }) {
       return updated;
     });
     pushNotification(`Doctor application for ${target?.applicantName || 'Applicant'} rejected.`);
-  }, [pushNotification]);
+  }, [isAdmin, pushNotification]);
 
   const registerPatient = useCallback((patientDetails) => {
     const updatedUser = {
@@ -735,12 +808,34 @@ export function AppProvider({ children }) {
     pushNotification(`Welcome to Medico, ${patientDetails.name || 'Member'}! Secure session active.`);
   }, [user, pushNotification]);
 
-  const handleLogin = useCallback(async (customUser) => {
+  const handleLogin = useCallback(async (customUser, rememberMe = false) => {
     const targetUser = customUser || user;
+
+    // Check if signing in as an explicit Administrator
+    if (targetUser.isAdmin || targetUser.role === "admin") {
+      setIsAdmin(true);
+      setRole("admin");
+      setIsLoggedIn(true);
+      const meta = issueSessionToken(targetUser, "admin", rememberMe);
+      setSessionMeta(meta);
+      setUser(targetUser);
+      try {
+        sessionStorage.setItem('medico_user', JSON.stringify(targetUser));
+        if (rememberMe) {
+          localStorage.setItem('medico_isLoggedIn', 'true');
+          localStorage.setItem('medico_role', 'admin');
+          localStorage.setItem('medico_user', JSON.stringify(targetUser));
+        }
+      } catch (e) {}
+      pushNotification("Signed in as Medical Board Administrator. Full licensing authority active.");
+      return;
+    }
+
     // Check if user has an approved doctor application
     const userApp = doctorApplications?.find(a => a.userId === targetUser.id && a.status === "APPROVED");
     const targetRole = userApp ? "doctor" : "patient";
 
+    setIsAdmin(false);
     setRole(targetRole);
     if (targetRole === "patient") {
       await fetchLocation();
@@ -748,13 +843,16 @@ export function AppProvider({ children }) {
     setIsLoggedIn(true);
 
     // Issue cryptographic session token
-    const meta = issueSessionToken(targetUser, targetRole);
+    const meta = issueSessionToken(targetUser, targetRole, rememberMe);
     setSessionMeta(meta);
 
     try {
-      localStorage.setItem('medico_isLoggedIn', 'true');
-      localStorage.setItem('medico_role', targetRole);
-      localStorage.setItem('medico_user', JSON.stringify(targetUser));
+      sessionStorage.setItem('medico_user', JSON.stringify(targetUser));
+      if (rememberMe) {
+        localStorage.setItem('medico_isLoggedIn', 'true');
+        localStorage.setItem('medico_role', targetRole);
+        localStorage.setItem('medico_user', JSON.stringify(targetUser));
+      }
     } catch (e) {}
     pushNotification(`Signed in securely. Session token verified.`);
   }, [user, doctorApplications, fetchLocation, pushNotification]);
@@ -762,11 +860,13 @@ export function AppProvider({ children }) {
   const logout = useCallback(() => {
     terminateSession();
     setIsLoggedIn(false);
+    setIsAdmin(false);
     setSessionMeta(null);
     setRole("patient");
     try {
       localStorage.removeItem('medico_isLoggedIn');
       localStorage.removeItem('medico_role');
+      sessionStorage.clear();
     } catch (e) {}
     pushNotification("Logged out. Session token revoked.");
   }, [pushNotification]);
@@ -776,6 +876,7 @@ export function AppProvider({ children }) {
       isLoggedIn, setIsLoggedIn, handleLogin, registerPatient, logout,
       sessionMeta,
       role, setRole,
+      isAdmin, verifyAdminPasskey, exitAdminMode,
       theme,
       doctorApplications,
       submitDoctorApplication,

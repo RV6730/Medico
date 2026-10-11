@@ -81,11 +81,14 @@ export function issueSessionToken(user, role = "patient", rememberMe = false) {
     name: user.name || "Member",
     email: user.email || "",
     role: role || "patient",
+    isAdmin: role === "admin" || !!user.isAdmin,
     deviceId,
     iat: Math.floor(now / 1000),
     exp: Math.floor(expiresAt / 1000),
     iss: "https://medico-one-iota.vercel.app",
-    scope: role === "doctor" ? ["patient:read", "doctor:queue", "doctor:reports"] : ["patient:all"],
+    scope: role === "admin" 
+      ? ["admin:all", "doctor:verify", "doctor:license_review"] 
+      : (role === "doctor" ? ["patient:read", "doctor:queue", "doctor:reports"] : ["patient:all"]),
   };
 
   const encodedHeader = base64UrlEncode(header);
@@ -99,6 +102,7 @@ export function issueSessionToken(user, role = "patient", rememberMe = false) {
     token,
     userId: payload.sub,
     role: payload.role,
+    isAdmin: !!payload.isAdmin,
     issuedAt: now,
     lastActive: now,
     expiresAt,
