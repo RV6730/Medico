@@ -12,17 +12,28 @@ import {
   ClipboardList, 
   Info, 
   Ambulance, 
-  LogOut, 
   ChevronRight,
-  User
+  User,
+  ShieldCheck,
+  Lock,
+  UserCheck
 } from "lucide-react";
+import DoctorApplyModal from "./DoctorApplyModal";
+import AdminVerificationModal from "./AdminVerificationModal";
+import SessionInfoModal from "./SessionInfoModal";
 
 export default function Navbar() {
-  const { role, user, logout, setEmergencyActive } = useApp();
+  const { role, setRole, user, logout, setEmergencyActive, doctorApplications, sessionMeta } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [doctorModalOpen, setDoctorModalOpen] = useState(false);
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
+
+  const pendingAppsCount = doctorApplications?.filter(a => a.status === "PENDING_VERIFICATION")?.length || 0;
+  const userApp = doctorApplications?.find(a => a.userId === user?.id);
 
   const handleLogout = () => {
     setMenuOpen(false);
@@ -301,6 +312,166 @@ export default function Navbar() {
 
               <div style={{ margin: "10px 10px", borderTop: "1px solid var(--border)" }} />
 
+              <div style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", padding: "4px 12px 8px" }}>
+                Practitioner & Security
+              </div>
+
+              {/* Doctor Registration / Mode Toggle */}
+              {role === "patient" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setDoctorModalOpen(true);
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "11px 12px",
+                    borderRadius: "10px",
+                    background: userApp?.status === "PENDING_VERIFICATION" ? "rgba(255, 159, 67, 0.08)" : "rgba(108, 99, 255, 0.08)",
+                    border: `1px solid ${userApp?.status === "PENDING_VERIFICATION" ? "rgba(255, 159, 67, 0.3)" : "rgba(108, 99, 255, 0.25)"}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    marginBottom: "6px"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <Stethoscope size={18} color="var(--primary)" />
+                    <div>
+                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                        {userApp?.status === "PENDING_VERIFICATION" ? "Doctor Verification" : "Register as Doctor"}
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: userApp?.status === "PENDING_VERIFICATION" ? "var(--text-warning)" : "var(--text-muted)" }}>
+                        {userApp?.status === "PENDING_VERIFICATION" ? "Pending Admin Review" : "Verify Medical License"}
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`badge ${userApp?.status === "PENDING_VERIFICATION" ? "badge-warning" : "badge-primary"}`} style={{ fontSize: "0.65rem" }}>
+                    {userApp?.status === "PENDING_VERIFICATION" ? "Pending" : "Apply"}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setRole(role === "doctor" ? "patient" : "doctor");
+                    navigate(role === "doctor" ? "/patient/home" : "/doctor");
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "11px 12px",
+                    borderRadius: "10px",
+                    background: "rgba(0, 212, 170, 0.08)",
+                    border: "1px solid rgba(0, 212, 170, 0.3)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    marginBottom: "6px"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <UserCheck size={18} color="var(--secondary)" />
+                    <div>
+                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                        Doctor Mode (Verified)
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--secondary)" }}>
+                        Switch to Patient View
+                      </div>
+                    </div>
+                  </div>
+                  <span className="badge badge-success" style={{ fontSize: "0.65rem" }}>
+                    Active
+                  </span>
+                </button>
+              )}
+
+              {/* Admin Review Portal Trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setAdminModalOpen(true);
+                }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "11px 12px",
+                  borderRadius: "10px",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  marginBottom: "6px"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <ShieldCheck size={18} color="var(--secondary)" />
+                  <div>
+                    <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                      Admin Board Review
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                      Confirm doctor applications
+                    </div>
+                  </div>
+                </div>
+                {pendingAppsCount > 0 ? (
+                  <span className="badge badge-warning" style={{ fontSize: "0.65rem" }}>
+                    {pendingAppsCount} Pending
+                  </span>
+                ) : (
+                  <ChevronRight size={14} color="var(--text-muted)" />
+                )}
+              </button>
+
+              {/* Cryptographic Session Info Trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setSessionModalOpen(true);
+                }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "11px 12px",
+                  borderRadius: "10px",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  marginBottom: "6px"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <Lock size={18} color="var(--text-secondary)" />
+                  <div>
+                    <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                      Session Security
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                      AES-256 Token Status
+                    </div>
+                  </div>
+                </div>
+                <span className="badge badge-success" style={{ fontSize: "0.65rem" }}>
+                  Active
+                </span>
+              </button>
+
+              <div style={{ margin: "10px 10px", borderTop: "1px solid var(--border)" }} />
+
               {/* Emergency SOS in Menu */}
               <button
                 type="button"
@@ -354,12 +525,28 @@ export default function Navbar() {
                 }}
               >
                 <LogOut size={16} />
-                <span>Log Out</span>
+                <span>Log Out & Invalidate Session</span>
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Verification & Session Modals */}
+      <DoctorApplyModal
+        isOpen={doctorModalOpen}
+        onClose={() => setDoctorModalOpen(false)}
+      />
+
+      <AdminVerificationModal
+        isOpen={adminModalOpen}
+        onClose={() => setAdminModalOpen(false)}
+      />
+
+      <SessionInfoModal
+        isOpen={sessionModalOpen}
+        onClose={() => setSessionModalOpen(false)}
+      />
     </>
   );
 }

@@ -19,8 +19,8 @@ import DoctorReports from "./pages/DoctorReports";
 import DoctorSchedule from "./pages/DoctorSchedule";
 
 function ProtectedRoute({ children, allowedRole }) {
-  const { isLoggedIn, role } = useApp();
-  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  const { isLoggedIn, role, sessionMeta } = useApp();
+  if (!isLoggedIn || !sessionMeta?.token) return <Navigate to="/login" replace />;
   if (allowedRole && role !== allowedRole) {
     return <Navigate to={role === "patient" ? "/patient/home" : "/doctor"} replace />;
   }

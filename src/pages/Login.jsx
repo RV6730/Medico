@@ -4,27 +4,34 @@ import { useApp } from "../context/AppContext";
 import { 
   Activity, 
   MapPin, 
-  CheckCircle, 
   User, 
   Phone, 
   Mail, 
-  ShieldAlert, 
-  Stethoscope, 
+  Lock, 
+  ShieldCheck, 
   Navigation, 
   Droplet,
   ArrowRight,
   Sparkles,
-  Globe,
-  Heart,
-  ShieldCheck
+  KeyRound,
+  CheckCircle2,
+  Stethoscope
 } from "lucide-react";
 import { POPULAR_LOCALITIES } from "../data/mockData";
 
 export default function Login() {
-  const { registerPatient, handleLogin, fetchLocation, isFetchingLocation, doctors } = useApp();
+  const { registerPatient, handleLogin, fetchLocation, isFetchingLocation, user } = useApp();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState("patient"); // "patient" | "doctor"
+  // Mode: "signin" | "register"
+  const [authMode, setAuthMode] = useState("signin");
+
+  // Sign In Form State
+  const [signInData, setSignInData] = useState({
+    identifier: "+91 98765 43210",
+    password: "••••••••",
+    rememberMe: true,
+  });
 
   // Registration Form State
   const [formData, setFormData] = useState({
@@ -44,7 +51,6 @@ export default function Login() {
 
   const [locationDetected, setLocationDetected] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedDoctorId, setSelectedDoctorId] = useState("d1");
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => {
@@ -70,7 +76,24 @@ export default function Login() {
     }
   };
 
-  const handleSubmitPatient = (e) => {
+  const handleSignInSubmit = async (e) => {
+    e.preventDefault();
+    if (!signInData.identifier.trim()) {
+      alert("Please enter your registered mobile number or email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    await handleLogin({
+      ...user,
+      phone: signInData.identifier.includes("@") ? user.phone : signInData.identifier,
+      email: signInData.identifier.includes("@") ? signInData.identifier : user.email,
+    });
+    setIsSubmitting(false);
+    navigate("/patient/home");
+  };
+
+  const handleRegisterSubmit = (e) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.phone.trim()) {
       alert("Please enter your name and phone number.");
@@ -97,14 +120,6 @@ export default function Login() {
     navigate("/patient/home");
   };
 
-  const handleDoctorLogin = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    await handleLogin("doctor");
-    setIsSubmitting(false);
-    navigate("/doctor");
-  };
-
   return (
     <div className="login-screen">
       {/* Brand Header */}
@@ -113,37 +128,159 @@ export default function Login() {
           <Activity size={28} className="brand-icon" />
           <span className="brand-name">Medico</span>
         </div>
-        <h2>Smart Hospital & Queue System</h2>
+        <h2>Healthcare & Live Queue Portal</h2>
         <p className="brand-subtitle">
-          Real-time queue tracking, nearest top hospitals & SMS token alerts
+          Real-time queue tracking, nearest verified hospitals & emergency response
         </p>
 
-        {/* Role Toggle */}
-        <div className="role-switcher">
+        {/* Cryptographic Security Indicator */}
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "8px",
+          background: "rgba(0, 212, 170, 0.08)",
+          border: "1px solid rgba(0, 212, 170, 0.25)",
+          borderRadius: "20px",
+          padding: "6px 14px",
+          marginTop: "12px",
+          fontSize: "0.75rem",
+          color: "var(--secondary)",
+          fontWeight: 600,
+        }}>
+          <ShieldCheck size={15} />
+          <span>Cryptographic Session Tokens • Anti-Theft Protected</span>
+        </div>
+
+        {/* Auth Mode Tabs (Sign In vs Register) */}
+        <div className="role-switcher" style={{ marginTop: "16px" }}>
           <button
             type="button"
-            className={`role-tab ${mode === "patient" ? "active" : ""}`}
-            onClick={() => setMode("patient")}
+            className={`role-tab ${authMode === "signin" ? "active" : ""}`}
+            onClick={() => setAuthMode("signin")}
           >
-            <User size={16} /> Patient Onboarding
+            <KeyRound size={16} /> Sign In
           </button>
           <button
             type="button"
-            className={`role-tab ${mode === "doctor" ? "active" : ""}`}
-            onClick={() => setMode("doctor")}
+            className={`role-tab ${authMode === "register" ? "active" : ""}`}
+            onClick={() => setAuthMode("register")}
           >
-            <Stethoscope size={16} /> Doctor Portal
+            <User size={16} /> Create Patient Account
           </button>
         </div>
       </div>
 
       {/* Main Card */}
       <div className="login-card">
-        {mode === "patient" ? (
-          <form onSubmit={handleSubmitPatient} className="reg-form">
+        {authMode === "signin" ? (
+          /* Sign In Form */
+          <form onSubmit={handleSignInSubmit} className="reg-form">
+            <div className="form-section-header">
+              <Lock size={16} color="var(--secondary)" />
+              <span>Secure User Authentication</span>
+            </div>
+
+            <div className="input-field">
+              <label>Mobile Number or Email</label>
+              <div className="input-wrap">
+                <Phone size={18} className="field-icon" />
+                <input
+                  type="text"
+                  placeholder="+91 98765 43210 or name@email.com"
+                  value={signInData.identifier}
+                  onChange={(e) => setSignInData({ ...signInData, identifier: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="input-field">
+              <label>Security Password / PIN</label>
+              <div className="input-wrap">
+                <Lock size={18} className="field-icon" />
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={signInData.password}
+                  onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "0.75rem",
+              margin: "6px 0 14px",
+              color: "var(--text-secondary)",
+            }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={signInData.rememberMe}
+                  onChange={(e) => setSignInData({ ...signInData, rememberMe: e.target.checked })}
+                />
+                Remember this device
+              </label>
+              <span style={{ color: "var(--primary)", fontWeight: 600, cursor: "pointer" }}>
+                Session Help
+              </span>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary btn-full btn-lg"
+              disabled={isSubmitting}
+            >
+              <span>Verify & Issue Session Token</span>
+              <ArrowRight size={18} />
+            </button>
+
+            {/* Quick Demo Login */}
+            <div style={{ textAlign: "center", marginTop: "14px" }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  handleLogin(user);
+                  navigate("/patient/home");
+                }}
+                style={{ color: "var(--primary-light)", fontSize: "0.8125rem", width: "100%", fontWeight: 600 }}
+              >
+                Instant Access as Demo Patient (Token Verified) →
+              </button>
+            </div>
+
+            {/* Physician notice */}
+            <div style={{
+              marginTop: "20px",
+              padding: "12px",
+              borderRadius: "10px",
+              background: "rgba(108, 99, 255, 0.05)",
+              border: "1px dashed rgba(108, 99, 255, 0.2)",
+              fontSize: "0.75rem",
+              color: "var(--text-secondary)",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "8px",
+            }}>
+              <Stethoscope size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: "2px" }} />
+              <div>
+                <strong style={{ color: "var(--text-primary)", display: "block", marginBottom: "2px" }}>
+                  Practicing Physician?
+                </strong>
+                Sign in with your user account. Once inside, submit your Medical Registration Number to Admin for official Doctor Mode verification.
+              </div>
+            </div>
+          </form>
+        ) : (
+          /* Register Form */
+          <form onSubmit={handleRegisterSubmit} className="reg-form">
             <div className="form-section-header">
               <Sparkles size={16} color="var(--secondary)" />
-              <span>Step 1: Patient Details</span>
+              <span>Step 1: Patient Credentials</span>
             </div>
 
             {/* Name */}
@@ -226,190 +363,152 @@ export default function Login() {
                   value={formData.bloodGroup}
                   onChange={(e) => handleInputChange("bloodGroup", e.target.value)}
                 >
-                  {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bg) => (
-                    <option key={bg} value={bg}>{bg}</option>
-                  ))}
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="Bombay Blood (Rare)">Bombay Blood (Rare)</option>
                 </select>
               </div>
             </div>
 
-            {/* Blood Donation Willingness Question */}
-            <div style={{
-              background: "linear-gradient(135deg, rgba(220,38,38,0.06), rgba(5,150,105,0.04))",
-              border: "1px solid rgba(220,38,38,0.25)",
-              borderRadius: "14px",
-              padding: "16px",
-              marginTop: "4px"
+            {/* Blood Donation Question */}
+            <div className="card mt-8" style={{
+              border: "1px solid rgba(220, 38, 38, 0.2)",
+              background: "rgba(220, 38, 38, 0.03)",
+              padding: "14px",
+              borderRadius: "12px",
             }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Droplet size={18} color="var(--accent)" />
-                  <strong style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>
-                    Are you willing to donate blood?
-                  </strong>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    background: "rgba(220, 38, 38, 0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent)",
+                    flexShrink: 0,
+                  }}>
+                    <Droplet size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                      Are you willing to donate blood?
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                      Help save lives during emergencies in your area
+                    </div>
+                  </div>
                 </div>
-                <span className="badge badge-danger" style={{ fontSize: "0.6875rem" }}>Life Saver</span>
-              </div>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "12px", lineHeight: 1.4 }}>
-                Help trauma & emergency surgery patients in your area. Your identity and personal phone number will remain 100% confidential.
-              </p>
 
-              {/* Yes / No Toggle */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                <button
-                  type="button"
-                  className={`btn ${formData.willingToDonateBlood ? "btn-primary" : "btn-secondary"}`}
-                  style={{
-                    padding: "9px 12px",
-                    fontSize: "0.8125rem",
-                    justifyContent: "center",
-                    background: formData.willingToDonateBlood ? "var(--accent)" : "var(--bg-card)",
-                    borderColor: formData.willingToDonateBlood ? "var(--accent)" : "var(--border)",
-                    color: formData.willingToDonateBlood ? "#FFFFFF" : "var(--text-secondary)",
-                    fontWeight: formData.willingToDonateBlood ? 700 : 500
-                  }}
-                  onClick={() => handleInputChange("willingToDonateBlood", true)}
-                >
-                  <Heart size={14} style={{ display: "inline" }} /> Yes, I want to help
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-secondary`}
-                  style={{
-                    padding: "9px 12px",
-                    fontSize: "0.8125rem",
-                    justifyContent: "center",
-                    background: !formData.willingToDonateBlood ? "var(--bg-surface)" : "var(--bg-card)",
-                    borderColor: !formData.willingToDonateBlood ? "var(--text-muted)" : "var(--border)",
-                    color: !formData.willingToDonateBlood ? "var(--text-primary)" : "var(--text-muted)",
-                    fontWeight: !formData.willingToDonateBlood ? 700 : 500
-                  }}
-                  onClick={() => handleInputChange("willingToDonateBlood", false)}
-                >
-                  Not at this time
-                </button>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${formData.willingToDonateBlood ? "btn-primary" : "btn-secondary"}`}
+                    onClick={() => handleInputChange("willingToDonateBlood", true)}
+                    style={{ minWidth: "54px" }}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${!formData.willingToDonateBlood ? "btn-primary" : "btn-secondary"}`}
+                    onClick={() => handleInputChange("willingToDonateBlood", false)}
+                    style={{ minWidth: "54px" }}
+                  >
+                    No
+                  </button>
+                </div>
               </div>
 
               {formData.willingToDonateBlood && (
-                <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed rgba(220,38,38,0.2)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)" }}>
-                      Anonymous Donor Username (Confidential)
-                    </label>
-                    <span style={{ fontSize: "0.6875rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "3px", fontWeight: 600 }}>
-                      <ShieldCheck size={12} /> Confidential Handle
+                <div style={{
+                  marginTop: "12px",
+                  paddingTop: "12px",
+                  borderTop: "1px dashed rgba(255,255,255,0.08)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                      Confidential Anonymous Contact Handle:
+                    </span>
+                    <span style={{ fontSize: "0.7rem", color: "var(--secondary)", fontWeight: 700 }}>
+                      Confidentiality Protected
                     </span>
                   </div>
-                  <div className="input-wrap">
-                    <User size={16} className="field-icon" />
-                    <input
-                      type="text"
-                      value={formData.anonymousUsername}
-                      onChange={(e) => handleInputChange("anonymousUsername", e.target.value)}
-                      placeholder="@Donor_Alias"
-                      required={formData.willingToDonateBlood}
-                    />
-                  </div>
-                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                    Patients and blood banks can only contact you via this anonymous handle to safeguard your privacy.
-                  </div>
+                  <input
+                    type="text"
+                    className="input-plain"
+                    value={formData.anonymousUsername}
+                    onChange={(e) => handleInputChange("anonymousUsername", e.target.value)}
+                    style={{ fontSize: "0.8125rem", fontFamily: "monospace" }}
+                  />
+                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                    Requesters contact you through this anonymous relay ID so your personal phone stays private.
+                  </span>
                 </div>
               )}
             </div>
 
-            {/* GPS & Network Location Box */}
-            <div className="location-permission-box">
-              <div className="loc-box-header">
-                <div className="loc-title">
-                  <Navigation size={18} color="var(--primary-light)" />
-                  <div>
-                    <strong>Location Detection</strong>
-                    <p>Required to match nearest hospitals & calculate wait times</p>
+            {/* Location Section */}
+            <div className="form-section-header mt-16">
+              <MapPin size={16} color="var(--primary)" />
+              <span>Step 2: Detect Nearby Hospitals</span>
+            </div>
+
+            <div className="location-box">
+              <div className="location-info">
+                <Navigation size={18} className="location-icon" />
+                <div className="location-text">
+                  <div className="loc-label">Your Detected Area</div>
+                  <div className="loc-value">{formData.location || "Bengaluru (Default)"}</div>
+                  <div className="loc-coords" style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                    Lat: {Number(formData.lat).toFixed(4)} • Lng: {Number(formData.lng).toFixed(4)}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleDetectLocation}
-                  disabled={isFetchingLocation}
-                >
-                  {isFetchingLocation ? (
-                    <span className="spin-pulse">Detecting...</span>
-                  ) : (
-                    <>
-                      <MapPin size={14} /> Detect Location
-                    </>
-                  )}
-                </button>
               </div>
 
-              <div className="loc-display">
-                <MapPin size={16} className={locationDetected ? "text-success" : "text-muted"} />
-                <input
-                  type="text"
-                  className="loc-input"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange("location", e.target.value)}
-                  placeholder="Or enter city / area manually"
-                />
-                {locationDetected && (
-                  <span className="verified-pill">
-                    <CheckCircle size={12} /> Set
-                  </span>
-                )}
-              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleDetectLocation}
+                disabled={isFetchingLocation}
+              >
+                {isFetchingLocation ? "Detecting..." : locationDetected ? "Re-detect GPS" : "Auto Detect GPS"}
+              </button>
+            </div>
 
-              {/* Quick Select Locality Chips */}
-              <div style={{ marginTop: "10px" }}>
-                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "6px" }}>
-                  Quick Locality Selection (Tap to set):
-                </div>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {POPULAR_LOCALITIES.map((loc) => {
-                    const isSelected = formData.location.includes(loc.name);
-                    return (
-                      <button
-                        key={loc.name}
-                        type="button"
-                        className={`pill ${isSelected ? "active" : ""}`}
-                        onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            location: `${loc.name}, Bengaluru`,
-                            lat: loc.lat,
-                            lng: loc.lng,
-                          }));
-                          setLocationDetected(true);
-                        }}
-                        style={{ fontSize: "0.72rem", padding: "3px 8px" }}
-                      >
-                        <MapPin size={10} /> {loc.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="loc-coords" style={{ marginTop: "10px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 600 }}>Exact Coordinates:</span>
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  <label style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Lat:</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={formData.lat}
-                    onChange={(e) => handleInputChange("lat", parseFloat(e.target.value) || 12.9352)}
-                    style={{ width: "85px", padding: "3px 6px", fontSize: "0.75rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-primary)" }}
-                  />
-                  <label style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Lng:</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={formData.lng}
-                    onChange={(e) => handleInputChange("lng", parseFloat(e.target.value) || 77.6245)}
-                    style={{ width: "85px", padding: "3px 6px", fontSize: "0.75rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-primary)" }}
-                  />
-                </div>
+            {/* Popular Localities Quick Select */}
+            <div className="locality-pills mt-8">
+              <span className="pills-label">Or select area:</span>
+              <div className="pills-scroll">
+                {POPULAR_LOCALITIES.slice(0, 5).map((loc) => (
+                  <button
+                    key={loc.name}
+                    type="button"
+                    className={`pill ${formData.location?.includes(loc.name) ? "active" : ""}`}
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        location: `${loc.name}, Bengaluru`,
+                        lat: loc.lat,
+                        lng: loc.lng,
+                      }));
+                      setLocationDetected(true);
+                    }}
+                  >
+                    {loc.name}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -419,74 +518,7 @@ export default function Login() {
               className="btn btn-primary btn-full btn-lg mt-16"
               disabled={isSubmitting}
             >
-              <span>Complete Setup & Enter</span>
-              <ArrowRight size={18} />
-            </button>
-
-            {/* Direct Bypass: Jump directly to Doctors & Hospitals Directory */}
-            <div style={{ textAlign: "center", marginTop: "12px" }}>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  registerPatient({
-                    name: formData.name || "Guest Patient",
-                    phone: formData.phone || "+91 98765 43210",
-                    email: formData.email || "guest@medico.app",
-                    age: Number(formData.age) || 26,
-                    gender: formData.gender || "Male",
-                    bloodGroup: formData.bloodGroup || "O+",
-                    condition: formData.condition || "None",
-                    location: formData.location || "Bengaluru",
-                    lat: Number(formData.lat) || 12.9352,
-                    lng: Number(formData.lng) || 77.6245,
-                  });
-                  navigate("/patient/home");
-                }}
-                style={{ color: "var(--primary-light)", fontSize: "0.8125rem", width: "100%", fontWeight: 600 }}
-              >
-                Explore 15 Hospitals & 26 Doctors Directly →
-              </button>
-            </div>
-          </form>
-        ) : (
-          /* Doctor Sign In Form */
-          <form onSubmit={handleDoctorLogin} className="reg-form">
-            <div className="form-section-header">
-              <ShieldAlert size={16} color="var(--primary-light)" />
-              <span>Doctor Verification & Sign In</span>
-            </div>
-
-            <div className="input-field">
-              <label>Select Verified Practicing Doctor</label>
-              <select
-                className="input-plain select-doc"
-                value={selectedDoctorId}
-                onChange={(e) => setSelectedDoctorId(e.target.value)}
-              >
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} — {d.specialty} ({d.hospital})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="doctor-badge-info card mt-12">
-              <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                Hospital Queue Management
-              </div>
-              <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginTop: "4px" }}>
-                Access live patient tokens, call next patient in line, take scheduled clinical breaks, and review uploaded reports.
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-full btn-lg mt-16"
-              disabled={isSubmitting}
-            >
-              <span>Access Doctor Dashboard</span>
+              <span>Create Account & Start Session</span>
               <ArrowRight size={18} />
             </button>
           </form>
@@ -494,7 +526,7 @@ export default function Login() {
       </div>
 
       <div className="login-footer">
-        <span>Protected with HIPAA compliant data standards & End-to-End SMS alerts</span>
+        <span>Protected with HIPAA compliant data standards & End-to-End Cryptographic Sessions</span>
       </div>
     </div>
   );

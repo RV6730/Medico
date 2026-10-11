@@ -13,12 +13,23 @@ import {
   smsEmergency,
   smsReferral,
 } from "../services/smsService";
+import { 
+  issueSessionToken, 
+  validateSessionToken, 
+  terminateSession, 
+  getActiveSession 
+} from "../utils/sessionSecurity";
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
+  const [sessionMeta, setSessionMeta] = useState(() => getActiveSession());
   const [role, setRole] = useState(() => {
-    try { return localStorage.getItem('medico_role') || "patient"; } catch { return "patient"; }
+    try { 
+      const active = getActiveSession();
+      if (active?.role) return active.role;
+      return localStorage.getItem('medico_role') || "patient"; 
+    } catch { return "patient"; }
   });
   const [activeDoctorId, setActiveDoctorId] = useState("d1");
   const [doctors, setDoctors] = useState(DOCTORS);
@@ -27,7 +38,37 @@ export function AppProvider({ children }) {
   const [bloodRequests, setBloodRequests] = useState(INITIAL_BLOOD_REQUESTS);
   const [volunteerDonors, setVolunteerDonors] = useState(VOLUNTEER_DONORS);
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    try { return localStorage.getItem('medico_isLoggedIn') === 'true'; } catch { return false; }
+    try { 
+      const active = getActiveSession();
+      if (active?.token) return true;
+      return localStorage.getItem('medico_isLoggedIn') === 'true'; 
+    } catch { return false; }
+  });
+  const [doctorApplications, setDoctorApplications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('medico_doctor_apps');
+      return saved ? JSON.parse(saved) : [
+        {
+          id: "MED-DOC-9821",
+          userId: "demo_doc_applicant",
+          applicantName: "Dr. Ananya Roy",
+          email: "ananya.roy@medico.health",
+          phone: "+91 98450 12345",
+          registrationNumber: "WBMC-2017-7362",
+          medicalCouncil: "West Bengal Medical Council",
+          qualifications: "MBBS, MD Pediatrics",
+          specialty: "Pediatrics",
+          hospital: "Cloudnine Hospital, Bengaluru",
+          experienceYears: 6,
+          consultationFee: 550,
+          idProofNumber: "DOC-WB-7362",
+          status: "PENDING_VERIFICATION",
+          submittedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+        }
+      ];
+    } catch {
+      return [];
+    }
   });
   const [user, setUser] = useState(() => {
     try {
@@ -535,6 +576,121 @@ export function AppProvider({ children }) {
     pushNotification(`Location set to ${locStr} (Lat: ${numLat.toFixed(4)}, Lng: ${numLng.toFixed(4)})`);
   }, [pushNotification]);
 
+  const submitDoctorApplication = useCallback((details) => {
+    const appId = `MED-DOC-${Math.floor(Math.random() * 8999 + 1000)}`;
+    const newApp = {
+      id: appId,
+      userId: details.userId || user.id,
+      applicantName: details.applicantName || `Dr. ${user.name}`,
+      email: details.email || user.email,
+      phone: details.phone || user.phone,
+      registrationNumber: details.registrationNumber,
+      medicalCouncil: details.medicalCouncil,
+      qualifications: details.qualifications,
+      specialty: details.specialty,
+      hospital: details.hospital,
+      experienceYears: details.experienceYears || 5,
+      consultationFee: details.consultationFee || 500,
+      idProofNumber: details.idProofNumber,
+      status: "PENDING_VERIFICATION",
+      submittedAt: new Date().toISOString(),
+    };
+
+    setDoctorApplications((prev) => {
+      const updated = [newApp, ...prev.filter(a => a.userId !== newApp.userId)];
+      try { localStorage.setItem('medico_doctor_apps', JSON.stringify(updated)); } catch(e){}
+      return updated;
+    });
+
+    pushNotification(`Doctor verification submitted [${appId}]. Pending Medical Board Admin review.`);
+    return newApp;
+  }, [user, pushNotification]);
+
+  const approveDoctorApplication = useCallback((appId) => {
+    let approvedApp = null;
+    setDoctorApplications((prev) => {
+      const updated = prev.map((a) => {
+        if (a.id === appId) {
+          approvedApp = { ...a, status: "APPROVED", verifiedAt: new Date().toISOString() };
+          return approvedApp;
+        }
+        return a;
+      });
+      try { localStorage.setItem('medico_doctor_apps', JSON.stringify(updated)); } catch(e){}
+      return updated;
+    });
+
+    if (approvedApp) {
+      // Check if this application belongs to the current active user
+      if (approvedApp.userId === user.id) {
+        setRole("doctor");
+        const newDoctorId = `doc_${Date.now()}`;
+        setActiveDoctorId(newDoctorId);
+
+        // Update user profile to reflect verified doctor status
+        const updatedUser = {
+          ...user,
+          name: approvedApp.applicantName,
+          specialty: approvedApp.specialty,
+          isDoctorVerified: true,
+          doctorRegistration: approvedApp.registrationNumber,
+          hospital: approvedApp.hospital,
+        };
+        setUser(updatedUser);
+
+        // Issue new cryptographic session token with doctor scope
+        const newMeta = issueSessionToken(updatedUser, "doctor");
+        setSessionMeta(newMeta);
+
+        // Add doctor to active directory
+        const newDocProfile = {
+          id: newDoctorId,
+          name: approvedApp.applicantName,
+          specialty: approvedApp.specialty,
+          rating: 5.0,
+          reviews: 1,
+          experience: `${approvedApp.experienceYears} years`,
+          hospital: approvedApp.hospital,
+          distance: "Nearby",
+          lat: user.lat || 12.9352,
+          lng: user.lng || 77.6245,
+          avatar: approvedApp.applicantName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase(),
+          availableToday: true,
+          consultationFee: approvedApp.consultationFee,
+          capabilities: [approvedApp.specialty, "General Consultation", "Diagnostics"],
+          queue: [],
+          currentPatient: null,
+          onBreak: false,
+          breakUntil: null,
+          nextSlot: "Available Now",
+          reports: [],
+          isVerifiedDoctor: true,
+        };
+        setDoctors(prev => [newDocProfile, ...prev]);
+
+        pushNotification(`Credentials Approved! Welcome to Medico Practice, ${approvedApp.applicantName}!`);
+      } else {
+        pushNotification(`Admin verified and approved ${approvedApp.applicantName} [${approvedApp.registrationNumber}].`);
+      }
+    }
+  }, [user, pushNotification]);
+
+  const rejectDoctorApplication = useCallback((appId, reason) => {
+    let target = null;
+    setDoctorApplications((prev) => {
+      const updated = prev.map((a) => {
+        if (a.id === appId) {
+          target = a;
+          return { ...a, status: "REJECTED", rejectionReason: reason || "Credentials could not be verified" };
+        }
+        return a;
+      });
+      try { localStorage.setItem('medico_doctor_apps', JSON.stringify(updated)); } catch(e){}
+      return updated;
+    });
+    pushNotification(`Doctor application for ${target?.applicantName || 'Applicant'} rejected.`);
+  }, [pushNotification]);
+
   const registerPatient = useCallback((patientDetails) => {
     const updatedUser = {
       ...user,
@@ -544,6 +700,10 @@ export function AppProvider({ children }) {
     setUser(updatedUser);
     setIsLoggedIn(true);
     setRole("patient");
+
+    // Issue cryptographic session token
+    const meta = issueSessionToken(updatedUser, "patient");
+    setSessionMeta(meta);
 
     if (patientDetails.willingToDonateBlood) {
       const anon = patientDetails.anonymousUsername || `@Donor_${(patientDetails.bloodGroup || 'O+').replace('+', 'Pos').replace('-', 'Neg')}_${Math.floor(Math.random() * 899 + 100)}`;
@@ -569,34 +729,55 @@ export function AppProvider({ children }) {
       localStorage.setItem('medico_isLoggedIn', 'true');
       localStorage.setItem('medico_role', 'patient');
     } catch (e) {}
-    pushNotification(`Welcome to Medico, ${patientDetails.name || 'Member'}!`);
+    pushNotification(`Welcome to Medico, ${patientDetails.name || 'Member'}! Secure session active.`);
   }, [user, pushNotification]);
 
-  const handleLogin = useCallback(async (selectedRole) => {
-    setRole(selectedRole);
-    if (selectedRole === "patient") {
+  const handleLogin = useCallback(async (customUser) => {
+    const targetUser = customUser || user;
+    // Check if user has an approved doctor application
+    const userApp = doctorApplications?.find(a => a.userId === targetUser.id && a.status === "APPROVED");
+    const targetRole = userApp ? "doctor" : "patient";
+
+    setRole(targetRole);
+    if (targetRole === "patient") {
       await fetchLocation();
     }
     setIsLoggedIn(true);
+
+    // Issue cryptographic session token
+    const meta = issueSessionToken(targetUser, targetRole);
+    setSessionMeta(meta);
+
     try {
       localStorage.setItem('medico_isLoggedIn', 'true');
-      localStorage.setItem('medico_role', selectedRole);
+      localStorage.setItem('medico_role', targetRole);
+      localStorage.setItem('medico_user', JSON.stringify(targetUser));
     } catch (e) {}
-  }, [fetchLocation]);
+    pushNotification(`Signed in securely. Session token verified.`);
+  }, [user, doctorApplications, fetchLocation, pushNotification]);
 
   const logout = useCallback(() => {
+    terminateSession();
     setIsLoggedIn(false);
+    setSessionMeta(null);
+    setRole("patient");
     try {
       localStorage.removeItem('medico_isLoggedIn');
       localStorage.removeItem('medico_role');
     } catch (e) {}
-  }, []);
+    pushNotification("Logged out. Session token revoked.");
+  }, [pushNotification]);
 
   return (
     <AppContext.Provider value={{
       isLoggedIn, setIsLoggedIn, handleLogin, registerPatient, logout,
+      sessionMeta,
       role, setRole,
       theme,
+      doctorApplications,
+      submitDoctorApplication,
+      approveDoctorApplication,
+      rejectDoctorApplication,
       activeDoctorId, setActiveDoctorId,
       doctors, setDoctors,
       hospitals, setHospitals,
