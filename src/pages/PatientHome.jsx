@@ -133,7 +133,7 @@ export default function PatientHome({ initialView = "doctors" }) {
       {/* Hero Header */}
       <div className="hero-section">
         <p className="greeting-text">Welcome back,</p>
-        <h1 className="hero-title">{user.name}</h1>
+        <h1 className="hero-title">{user?.name || "Member"}</h1>
         <p style={{ color: "var(--text-secondary)", fontSize: "0.8125rem", marginTop: "2px" }}>
           Find top hospitals, verified doctors & 24x7 ambulance services
         </p>
@@ -146,7 +146,7 @@ export default function PatientHome({ initialView = "doctors" }) {
         >
           <Navigation size={14} className={isFetchingLocation ? "spin-pulse" : "loc-icon"} style={{ color: "var(--primary)", flexShrink: 0 }} />
           <span style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
-            {isFetchingLocation ? "Detecting GPS..." : user.location}
+            {isFetchingLocation ? "Detecting GPS..." : (user?.location || "Bengaluru")}
           </span>
           <span style={{ fontSize: "0.6875rem", padding: "2px 6px", background: "rgba(16,185,129,0.15)", color: "var(--primary)", borderRadius: "6px", fontFamily: "monospace", fontWeight: 700, flexShrink: 0 }}>
             {Number(user.lat).toFixed(4)}, {Number(user.lng).toFixed(4)}

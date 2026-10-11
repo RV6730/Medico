@@ -19,16 +19,16 @@ export default function DoctorApplyModal({ isOpen, onClose }) {
   const userExistingApp = doctorApplications?.find(a => a.userId === user.id);
 
   const [formData, setFormData] = useState({
-    fullName: user.name.startsWith("Dr.") ? user.name : `Dr. ${user.name}`,
-    registrationNumber: "KMC-2018-84729",
-    medicalCouncil: "Karnataka Medical Council",
-    qualifications: "MBBS, MS Ophthalmology",
-    specialty: "Ophthalmology",
-    hospital: "Manipal Hospital, Old Airport Road",
-    experienceYears: "7",
-    consultationFee: "600",
-    idProofNumber: "MED-ID-8849-IN",
-    agreeToTerms: true,
+    fullName: user?.name ? (user.name.startsWith("Dr.") ? user.name : `Dr. ${user.name}`) : "",
+    registrationNumber: "",
+    medicalCouncil: "",
+    qualifications: "",
+    specialty: "General Medicine",
+    hospital: "",
+    experienceYears: "",
+    consultationFee: "500",
+    idProofNumber: "",
+    agreeToTerms: false,
   });
 
   const [submitted, setSubmitted] = useState(false);

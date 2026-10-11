@@ -40,8 +40,7 @@ export function AppProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     try { 
       const active = getActiveSession();
-      if (active?.token) return true;
-      return localStorage.getItem('medico_isLoggedIn') === 'true'; 
+      return !!active?.token;
     } catch { return false; }
   });
   const [doctorApplications, setDoctorApplications] = useState(() => {
@@ -72,8 +71,12 @@ export function AppProvider({ children }) {
   });
   const [user, setUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('medico_user');
-      return saved ? JSON.parse(saved) : CURRENT_USER;
+      const active = getActiveSession();
+      if (active?.token) {
+        const saved = sessionStorage.getItem('medico_user') || localStorage.getItem('medico_user');
+        if (saved) return JSON.parse(saved);
+      }
+      return CURRENT_USER;
     } catch {
       return CURRENT_USER;
     }

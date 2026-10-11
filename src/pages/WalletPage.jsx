@@ -164,7 +164,7 @@ export default function WalletPage() {
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Card Holder</div>
             <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "rgba(255,255,255,0.9)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              {user.name}
+              {user?.name || "MEDICO MEMBER"}
             </div>
           </div>
         </div>

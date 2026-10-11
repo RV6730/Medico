@@ -26,25 +26,25 @@ export default function Login() {
   // Mode: "signin" | "register"
   const [authMode, setAuthMode] = useState("signin");
 
-  // Sign In Form State
+  // Sign In Form State (Completely Blank by Default)
   const [signInData, setSignInData] = useState({
-    identifier: "+91 98765 43210",
-    password: "••••••••",
-    rememberMe: true,
+    identifier: "",
+    password: "",
+    rememberMe: false,
   });
 
-  // Registration Form State
+  // Registration Form State (Completely Blank by Default)
   const [formData, setFormData] = useState({
-    name: "Sujay Sharma",
-    phone: "+91 98765 43210",
-    email: "sujay@example.com",
-    age: "26",
+    name: "",
+    phone: "",
+    email: "",
+    age: "",
     gender: "Male",
     bloodGroup: "O+",
-    willingToDonateBlood: true,
-    anonymousUsername: "@Donor_O_Pos_77",
+    willingToDonateBlood: false,
+    anonymousUsername: "",
     condition: "None",
-    location: "Koramangala, Bengaluru",
+    location: "",
     lat: 12.9352,
     lng: 77.6245,
   });
@@ -84,11 +84,24 @@ export default function Login() {
     }
 
     setIsSubmitting(true);
+    const identifier = signInData.identifier.trim();
+    const isEmail = identifier.includes("@");
+    const formattedName = isEmail 
+      ? identifier.split("@")[0].replace(/[^a-zA-Z]/g, " ").trim() || "User"
+      : `Patient ${identifier.slice(-4)}`;
+
     await handleLogin({
-      ...user,
-      phone: signInData.identifier.includes("@") ? user.phone : signInData.identifier,
-      email: signInData.identifier.includes("@") ? signInData.identifier : user.email,
-    });
+      id: `u_${Date.now()}`,
+      name: formattedName.charAt(0).toUpperCase() + formattedName.slice(1),
+      phone: isEmail ? "+91 98000 00000" : identifier,
+      email: isEmail ? identifier : `${identifier.replace(/\D/g, '')}@medico.health`,
+      role: "patient",
+      wallet: {
+        balance: 1000,
+        minBalance: 200,
+        transactions: [],
+      },
+    }, signInData.rememberMe);
     setIsSubmitting(false);
     navigate("/patient/home");
   };
@@ -102,14 +115,14 @@ export default function Login() {
 
     setIsSubmitting(true);
     registerPatient({
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      age: Number(formData.age) || 26,
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim() || `${formData.name.toLowerCase().replace(/\s+/g, '')}@medico.health`,
+      age: Number(formData.age) || 28,
       gender: formData.gender,
       bloodGroup: formData.bloodGroup,
       willingToDonateBlood: formData.willingToDonateBlood,
-      anonymousUsername: formData.anonymousUsername || `@Donor_${formData.bloodGroup.replace('+', 'Pos').replace('-', 'Neg')}_${Math.floor(Math.random() * 89 + 10)}`,
+      anonymousUsername: formData.anonymousUsername || (formData.willingToDonateBlood ? `@Donor_${formData.bloodGroup.replace('+', 'Pos').replace('-', 'Neg')}_${Math.floor(Math.random() * 89 + 10)}` : ""),
       condition: formData.condition,
       location: formData.location || "Bengaluru",
       lat: formData.lat,
@@ -186,7 +199,7 @@ export default function Login() {
                 <Phone size={18} className="field-icon" />
                 <input
                   type="text"
-                  placeholder="+91 98765 43210 or name@email.com"
+                  placeholder="Enter registered mobile or email"
                   value={signInData.identifier}
                   onChange={(e) => setSignInData({ ...signInData, identifier: e.target.value })}
                   required
@@ -237,21 +250,6 @@ export default function Login() {
               <span>Verify & Issue Session Token</span>
               <ArrowRight size={18} />
             </button>
-
-            {/* Quick Demo Login */}
-            <div style={{ textAlign: "center", marginTop: "14px" }}>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  handleLogin(user);
-                  navigate("/patient/home");
-                }}
-                style={{ color: "var(--primary-light)", fontSize: "0.8125rem", width: "100%", fontWeight: 600 }}
-              >
-                Instant Access as Demo Patient (Token Verified) →
-              </button>
-            </div>
 
             {/* Physician notice */}
             <div style={{
@@ -306,7 +304,7 @@ export default function Login() {
                   <Phone size={18} className="field-icon" />
                   <input
                     type="tel"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 XXXXX XXXXX"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     required
@@ -320,7 +318,7 @@ export default function Login() {
                   <Mail size={18} className="field-icon" />
                   <input
                     type="email"
-                    placeholder="name@email.com"
+                    placeholder="name@example.com"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                   />

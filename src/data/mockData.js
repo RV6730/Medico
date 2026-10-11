@@ -1126,33 +1126,28 @@ export const PATIENTS = {
 };
 
 export const CURRENT_USER = {
-  id: "u1",
-  name: "Sujay Sharma",
-  phone: "+91 98765 43210",
-  email: "sujay@example.com",
-  age: 26,
+  id: "",
+  name: "",
+  phone: "",
+  email: "",
+  age: "",
   gender: "Male",
   bloodGroup: "O+",
-  location: "Koramangala, Bengaluru",
+  location: "Bengaluru",
   lat: 12.9352,
   lng: 77.6245,
   wallet: {
-    balance: 1500,
+    balance: 1000,
     minBalance: 200,
     cardNumber: "4219 •••• •••• 8821",
-    cardHolder: "SUJAY SHARMA",
+    cardHolder: "MEMBER",
     validThru: "12/29",
     transactions: [
-      { id: "t1", type: "credit", amount: 500, desc: "Instant Wallet Top-up (UPI)", date: "2026-10-08" },
-      { id: "t2", type: "debit", amount: 200, desc: "OPD Booking - Dr. Suresh Kumar", date: "2026-10-09" },
-      { id: "t3", type: "debit", amount: 100, desc: "Cancellation Surcharge - Missed slot", date: "2026-10-09" },
+      { id: "t1", type: "credit", amount: 1000, desc: "Welcome Health Wallet Credit", date: "2026-10-10" },
     ]
   },
   appointments: [],
-  medicalHistory: [
-    { date: "2026-09-15", doctor: "Dr. Suresh Kumar", diagnosis: "Mild Seasonal Viral", prescription: "Paracetamol 500mg, Rest" },
-    { date: "2026-08-20", doctor: "Dr. Priya Sharma", diagnosis: "Computer Vision Strain", prescription: "Preservative-free Eye Drops" },
-  ]
+  medicalHistory: []
 };
 
 export const MEDICAL_TIPS = [

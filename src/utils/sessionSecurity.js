@@ -66,7 +66,7 @@ export function getDeviceFingerprint() {
  * Issues a cryptographically signed Session Token
  * Format: Header.Payload.Signature (JWT Structure)
  */
-export function issueSessionToken(user, role = "patient") {
+export function issueSessionToken(user, role = "patient", rememberMe = false) {
   const now = Date.now();
   const expiresAt = now + TOKEN_TTL_MS;
   const deviceId = getDeviceFingerprint();
@@ -78,8 +78,8 @@ export function issueSessionToken(user, role = "patient") {
 
   const payload = {
     sub: user.id || `u_${now}`,
-    name: user.name || "Medico User",
-    email: user.email || "user@medico.health",
+    name: user.name || "Member",
+    email: user.email || "",
     role: role || "patient",
     deviceId,
     iat: Math.floor(now / 1000),
@@ -100,17 +100,26 @@ export function issueSessionToken(user, role = "patient") {
     userId: payload.sub,
     role: payload.role,
     issuedAt: now,
+    lastActive: now,
     expiresAt,
     deviceId,
+    rememberMe: !!rememberMe,
     status: "ACTIVE",
     encryption: "AES-256 / SHA-256 HMAC",
   };
 
   try {
+    // Primary storage: sessionStorage (cleared when browser/tab closes)
     sessionStorage.setItem(SESSION_STORAGE_KEY, token);
     sessionStorage.setItem(SESSION_META_KEY, JSON.stringify(sessionMeta));
-    localStorage.setItem(SESSION_STORAGE_KEY, token);
-    localStorage.setItem(SESSION_META_KEY, JSON.stringify(sessionMeta));
+
+    if (rememberMe) {
+      localStorage.setItem(SESSION_STORAGE_KEY, token);
+      localStorage.setItem(SESSION_META_KEY, JSON.stringify(sessionMeta));
+    } else {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(SESSION_META_KEY);
+    }
   } catch (e) {
     console.warn("[SessionSecurity] Storage write warning:", e);
   }
@@ -123,10 +132,10 @@ export function issueSessionToken(user, role = "patient") {
  * Returns { valid: boolean, payload: object|null, reason: string|null }
  */
 export function validateSessionToken(tokenString) {
-  const token = tokenString || (typeof window !== "undefined" ? sessionStorage.getItem(SESSION_STORAGE_KEY) || localStorage.getItem(SESSION_STORAGE_KEY) : null);
+  const token = tokenString || (typeof window !== "undefined" ? sessionStorage.getItem(SESSION_STORAGE_KEY) : null);
 
   if (!token) {
-    return { valid: false, payload: null, reason: "No session token found" };
+    return { valid: false, payload: null, reason: "No active session token" };
   }
 
   const parts = token.split(".");
@@ -167,6 +176,8 @@ export function terminateSession() {
     localStorage.removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(SESSION_META_KEY);
     localStorage.removeItem("medico_isLoggedIn");
+    localStorage.removeItem("medico_role");
+    localStorage.removeItem("medico_user");
   } catch (e) {
     console.warn("[SessionSecurity] Clear session warning:", e);
   }
@@ -177,15 +188,38 @@ export function terminateSession() {
  */
 export function getActiveSession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_META_KEY) || localStorage.getItem(SESSION_META_KEY);
-    if (!raw) return null;
-    const meta = JSON.parse(raw);
-    const validation = validateSessionToken(meta.token);
-    if (!validation.valid) {
+    // 1. Check current sessionStorage first
+    const sessionRaw = sessionStorage.getItem(SESSION_META_KEY);
+    if (sessionRaw) {
+      const meta = JSON.parse(sessionRaw);
+      const validation = validateSessionToken(meta.token);
+      if (validation.valid) {
+        return meta;
+      }
       terminateSession();
       return null;
     }
-    return meta;
+
+    // 2. Check localStorage only if rememberMe was explicitly saved within last 2 hours
+    const localRaw = localStorage.getItem(SESSION_META_KEY);
+    if (localRaw) {
+      const meta = JSON.parse(localRaw);
+      const now = Date.now();
+      const maxAgeMs = 2 * 60 * 60 * 1000; // 2 hours
+      if (meta.rememberMe && (now - (meta.lastActive || meta.issuedAt)) < maxAgeMs) {
+        const validation = validateSessionToken(meta.token);
+        if (validation.valid) {
+          // Re-hydrate into sessionStorage
+          sessionStorage.setItem(SESSION_STORAGE_KEY, meta.token);
+          sessionStorage.setItem(SESSION_META_KEY, JSON.stringify(meta));
+          return meta;
+        }
+      }
+      terminateSession();
+      return null;
+    }
+
+    return null;
   } catch {
     return null;
   }
