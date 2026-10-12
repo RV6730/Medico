@@ -1,6 +1,12 @@
 # Medico - Smart Healthcare, Queue & E-Blood Bank Platform
 
-A smart healthcare and appointment management application featuring real-time queue tracking, confidential e-Blood banking, capability-based doctor matching, emergency SOS dispatch, and cross-doctor collaborative care.
+A smart healthcare and appointment management application featuring real-time queue tracking, confidential e-Blood banking, capability-based doctor matching, emergency SOS dispatch, and cross-doctor referrals with patient-first privacy controls.
+
+---
+
+## Live Demo
+
+- Login: [Medico Web App](https://medico-one-iota.vercel.app/login)
 
 ---
 
